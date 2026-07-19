@@ -1,0 +1,543 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Барометр — прогноз её настроения</title>
+<style>
+  :root{
+    color-scheme: light;
+    --bg:#fcfcfb; --card:#ffffff; --ink:#26241f; --ink2:#5f5b52; --muted:#8a857a;
+    --line:#e8e5df; --radius:18px;
+    --mens:#B03A54; --fol:#14969B; --ovu:#B37F15; --lut:#3A5FB8; --pms:#DD7FC2;
+    --mens-t:rgba(176,58,84,.12); --fol-t:rgba(20,150,155,.12); --ovu-t:rgba(179,127,21,.14);
+    --lut-t:rgba(58,95,184,.11); --pms-t:rgba(221,127,194,.16);
+  }
+  *{box-sizing:border-box; margin:0; padding:0; -webkit-tap-highlight-color:transparent}
+  body{
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+    background:var(--bg); color:var(--ink); line-height:1.5;
+    max-width:520px; margin:0 auto; padding:16px 14px 48px;
+  }
+  header{padding:10px 4px 18px; display:flex; align-items:center; gap:12px}
+  .logo{font-size:34px; line-height:1}
+  header h1{font-size:22px; letter-spacing:-.02em}
+  header p{font-size:13px; color:var(--muted); margin-top:1px}
+  .card{background:var(--card); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px 16px; margin-bottom:14px; box-shadow:0 1px 3px rgba(40,35,25,.04)}
+  .card h2{font-size:12px; text-transform:uppercase; letter-spacing:.09em; color:var(--muted);
+    font-weight:600; margin-bottom:12px}
+  /* setup */
+  label{display:block; font-size:13px; color:var(--ink2); margin:12px 0 4px}
+  input[type=date],select{
+    width:100%; font-size:16px; padding:11px 12px; border:1px solid var(--line);
+    border-radius:12px; background:#fff; color:var(--ink); appearance:none}
+  .row2{display:grid; grid-template-columns:1fr 1fr; gap:12px}
+  button{font-family:inherit; cursor:pointer; border:none; border-radius:12px; font-size:15px}
+  .btn-primary{width:100%; margin-top:16px; padding:13px; background:var(--ink); color:#fff; font-weight:600}
+  .btn-ghost{background:none; color:var(--ink2); font-size:13px; padding:6px 10px; border:1px solid var(--line); border-radius:10px}
+  .setup-summary{display:flex; justify-content:space-between; align-items:center; gap:10px}
+  .setup-summary .txt{font-size:13.5px; color:var(--ink2)}
+  .date-row{display:flex; gap:8px; align-items:stretch}
+  .date-row input{flex:1}
+  .date-row .btn-ghost{flex:none}
+  .opt{color:var(--muted); font-weight:400}
+  /* today */
+  .today-top{display:flex; align-items:center; gap:14px}
+  .today-emoji{font-size:44px; line-height:1}
+  .today-phase{font-size:20px; font-weight:700; letter-spacing:-.01em}
+  .today-sub{font-size:13px; color:var(--muted)}
+  .phase-chip{display:inline-block; width:10px; height:10px; border-radius:3px; margin-right:6px; vertical-align:baseline}
+  .mood-line{display:flex; align-items:center; gap:10px; margin-top:14px}
+  .mood-bar{flex:1; height:8px; border-radius:4px; background:var(--line); overflow:hidden}
+  .mood-fill{height:100%; border-radius:4px}
+  .mood-num{font-size:13px; font-weight:700; min-width:38px; text-align:right}
+  .mood-caption{font-size:14px; margin-top:8px}
+  .tomorrow{margin-top:12px; padding-top:12px; border-top:1px dashed var(--line); font-size:13.5px; color:var(--ink2)}
+  .period-btn{width:100%; margin-top:14px; padding:11px; background:var(--mens-t); color:var(--mens); font-weight:600; font-size:14px}
+  /* radar */
+  .radar-item{display:flex; align-items:center; gap:12px; padding:9px 0}
+  .radar-item+.radar-item{border-top:1px solid var(--line)}
+  .radar-ico{width:34px; height:34px; border-radius:10px; display:flex; align-items:center; justify-content:center; font-size:17px; flex:none}
+  .radar-name{font-size:14.5px; font-weight:600}
+  .radar-date{font-size:12.5px; color:var(--muted)}
+  .radar-when{margin-left:auto; font-size:13px; font-weight:700; white-space:nowrap}
+  .radar-note{font-size:12.5px; color:var(--ink2); margin-top:2px}
+  /* advice */
+  .adv-block{margin-bottom:14px}
+  .adv-block:last-child{margin-bottom:0}
+  .adv-title{font-size:13.5px; font-weight:700; margin-bottom:6px; display:flex; align-items:center; gap:7px}
+  .adv-list{list-style:none}
+  .adv-list li{font-size:14px; color:var(--ink2); padding:3px 0 3px 22px; position:relative}
+  .adv-list li::before{content:"·"; position:absolute; left:8px; font-weight:900}
+  .hormones{font-size:13px; color:var(--muted); font-style:italic; margin-bottom:12px}
+  .care-idea{background:var(--bg); border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:14px; margin-top:4px}
+  .care-idea b{display:block; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted); margin-bottom:4px}
+  /* chart */
+  .chart-wrap{position:relative}
+  svg{display:block; width:100%; height:auto}
+  .tooltip{position:absolute; pointer-events:none; background:var(--ink); color:#fff; font-size:12px;
+    padding:6px 9px; border-radius:8px; white-space:nowrap; transform:translate(-50%,-115%); opacity:0; transition:opacity .12s}
+  /* calendar */
+  .cal-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px}
+  .cal-title{font-size:15px; font-weight:700; text-transform:capitalize}
+  .cal-nav{display:flex; gap:8px}
+  .cal-nav button{width:34px; height:34px; border-radius:10px; border:1px solid var(--line); background:#fff; font-size:16px; color:var(--ink2)}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px}
+  .dow{font-size:11px; color:var(--muted); text-align:center; padding:4px 0; font-weight:600}
+  .cell{aspect-ratio:1/1.05; border-radius:10px; display:flex; flex-direction:column; align-items:center;
+    justify-content:center; gap:3px; font-size:13px; position:relative}
+  .cell .bar{width:16px; height:3px; border-radius:2px}
+  .cell.other{opacity:.32}
+  .cell.today-cell{outline:2px solid var(--ink); outline-offset:-2px; font-weight:800}
+  .legend{display:flex; flex-wrap:wrap; gap:8px 14px; margin-top:14px}
+  .legend span{font-size:12px; color:var(--ink2); display:flex; align-items:center; gap:6px}
+  .legend i{width:10px; height:10px; border-radius:3px; display:inline-block}
+  /* misc */
+  .disclaimer{font-size:12.5px; color:var(--muted); line-height:1.55}
+  .disclaimer b{color:var(--ink2)}
+  .golden{background:linear-gradient(0deg, var(--fol-t), var(--fol-t)); border-color:rgba(20,150,155,.3)}
+  .hidden{display:none}
+  .hint{font-size:12px; color:var(--muted); margin-top:10px}
+  .empty-note{font-size:14px; color:var(--ink2)}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo">🌗</div>
+  <div>
+    <h1>Барометр</h1>
+    <p>прогноз её настроения — для внимательного мужа</p>
+  </div>
+</header>
+
+<!-- SETUP -->
+<div class="card" id="setupCard">
+  <h2>Настройка цикла</h2>
+  <div id="setupSummary" class="setup-summary hidden">
+    <div class="txt" id="summaryText"></div>
+    <button class="btn-ghost" onclick="openSetup()">Изменить</button>
+  </div>
+  <div id="setupForm">
+    <p class="empty-note" id="introNote">Достаточно одной даты: когда у жены <b>начались последние месячные</b> (первый день). Остальное можно не знать — возьмём средние значения, а со временем уточнишь.</p>
+    <label for="inpDate">Первый день последних месячных</label>
+    <div class="date-row">
+      <input type="date" id="inpDate">
+      <button class="btn-ghost" type="button" onclick="setToday()">Сегодня</button>
+    </div>
+    <div class="row2">
+      <div>
+        <label for="inpLen">Длина цикла <span class="opt">— если знаешь</span></label>
+        <select id="inpLen"></select>
+      </div>
+      <div>
+        <label for="inpPer">Месячные длятся <span class="opt">— если знаешь</span></label>
+        <select id="inpPer"></select>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="saveSetup()">Рассчитать</button>
+    <p class="hint">Не знаешь длину цикла — оставь «не знаю», возьмём 28 дней (самое частое значение). Когда начнутся следующие месячные, нажми в приложении «пересчитать» — и приложение само подскажет реальную длину цикла.</p>
+  </div>
+</div>
+
+<div id="app" class="hidden">
+
+  <!-- TODAY -->
+  <div class="card" id="todayCard"></div>
+
+  <!-- RADAR -->
+  <div class="card">
+    <h2>📡 Радар — что впереди</h2>
+    <div id="radar"></div>
+  </div>
+
+  <!-- ADVICE -->
+  <div class="card" id="adviceCard"></div>
+
+  <!-- MOOD CURVE -->
+  <div class="card">
+    <h2>Кривая настроения — весь цикл</h2>
+    <div class="chart-wrap" id="chartWrap">
+      <div class="tooltip" id="chartTip"></div>
+    </div>
+    <div class="legend" id="chartLegend"></div>
+  </div>
+
+  <!-- CALENDAR -->
+  <div class="card">
+    <h2>Календарь фаз</h2>
+    <div class="cal-head">
+      <div class="cal-title" id="calTitle"></div>
+      <div class="cal-nav">
+        <button onclick="navMonth(-1)">‹</button>
+        <button onclick="navMonth(1)">›</button>
+      </div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="legend" id="calLegend"></div>
+  </div>
+
+  <!-- RULES -->
+  <div class="card">
+    <h2>Три правила умного мужа</h2>
+    <ul class="adv-list">
+      <li><b>Никогда</b> не говори «у тебя просто ПМС» и не объясняй её эмоции циклом вслух. Это приложение — для твоей внимательности, а не для аргументов в споре.</li>
+      <li>Прогноз — ориентир, а не истина. Настоящий инструмент — спрашивать и слушать. «Как ты? Чем помочь?» работает в любую фазу.</li>
+      <li>Каждая женщина индивидуальна. Понаблюдай пару циклов и мысленно поправь прогноз под свою жену.</li>
+    </ul>
+  </div>
+
+  <div class="card disclaimer">
+    <b>Дисклеймер.</b> Расчёт основан на усреднённой модели цикла (овуляция ≈ за 14 дней до следующих месячных, ПМС — последние ~5 дней). Это не медицинский инструмент и не средство контрацепции. Настроение зависит не только от гормонов: сон, стресс и работа влияют не меньше. Данные хранятся только в адресе этой страницы — добавь её в закладки, чтобы не вводить заново.
+  </div>
+
+</div>
+
+<script>
+"use strict";
+/* ================= state ================= */
+const state = { start:null, len:28, per:5 };
+let calCursor = null; // {y, m}
+
+const PHASES = {
+  mens:{ name:"Менструация", emoji:"🌧", color:"var(--mens)", hex:"#B03A54", tint:"var(--mens-t)",
+    short:"низкая энергия, нужен покой" },
+  fol:{ name:"Фолликулярная фаза", emoji:"🌱", color:"var(--fol)", hex:"#14969B", tint:"var(--fol-t)",
+    short:"энергия растёт, лёгкость" },
+  ovu:{ name:"Овуляция", emoji:"☀️", color:"var(--ovu)", hex:"#B37F15", tint:"var(--ovu-t)",
+    short:"пик энергии и настроения" },
+  lut:{ name:"Лютеиновая фаза", emoji:"🌤", color:"var(--lut)", hex:"#3A5FB8", tint:"var(--lut-t)",
+    short:"спокойствие, тяга к уюту" },
+  pms:{ name:"ПМС", emoji:"⛈", color:"var(--pms)", hex:"#DD7FC2", tint:"var(--pms-t)",
+    short:"чувствительность, раздражительность" }
+};
+
+const ADVICE = {
+  mens:{
+    horm:"Эстроген и прогестерон на минимуме. Возможны боли, слабость, озноб.",
+    expect:["Низкая энергия, хочется лежать и чтобы не трогали","Чувствительность к боли и холоду","Настроение обычно начинает улучшаться к 3–4 дню"],
+    help:["Возьми быт на себя: ужин, посуда, дети — твоя смена","Тепло: плед, грелка, горячий чай","Спокойные вечера без гостей и обязательств","Спроси один раз «чем помочь?» — и сделай"],
+    avoid:["Серьёзные разговоры и выяснение отношений","Активные планы: походы, вечеринки, дальние поездки","Комментарии про «полежать весь день»"],
+    care:["Принеси её любимый чай или какао без просьбы","Купи обезболивающее заранее, чтобы было дома","Обними без слов. Просто побудь рядом","Закажи её любимую еду — сегодня не день готовки","Вечер её сериала: не критикуй, принеси плед"]
+  },
+  fol:{
+    horm:"Эстроген растёт день за днём — вместе с ним энергия и оптимизм.",
+    expect:["Настроение улучшается, появляется лёгкость","Открытость новому, желание общаться и планировать","Обычно самый ровный и приятный период"],
+    help:["Лучшее время для важных разговоров и совместных решений","Планируйте: отпуск, крупные покупки, дела","Предложи активность: прогулка, спорт, поездка","Свидание! Сейчас всё зайдёт на ура"],
+    avoid:["Особо нечего избегать — просто не упусти это окно"],
+    care:["Позови на свидание, как в начале отношений","Предложи спонтанную мини-поездку на выходные","Обсуди мечты и планы — сейчас она к этому открыта","Сделай вместе то, что давно откладывали","Скажи, что она классная. Просто так"]
+  },
+  ovu:{
+    horm:"Пик эстрогена и всплеск ЛГ. Максимум энергии, уверенности и либидо.",
+    expect:["Пик настроения, общительности и привлекательности","Либидо часто на максимуме","У некоторых — лёгкая боль внизу живота (1 день)"],
+    help:["Романтика: сегодня лучшие свидания в цикле","Комплименты — она и сама чувствует себя на высоте","Важно: это самые фертильные дни цикла — помни об этом в обе стороны"],
+    avoid:["Не игнорируй её инициативу — сейчас она особенно активна"],
+    care:["Цветы. Вот прямо сегодня","Романтический ужин — дома или в ресторане","Скажи конкретный комплимент, не дежурный","Устройте вечер только вдвоём"]
+  },
+  lut:{
+    horm:"Прогестерон растёт: организм переходит в режим «спокойствие и уют».",
+    expect:["Ровное настроение, но энергия постепенно снижается","Тяга к дому, уюту, стабильности","Аппетит может расти — это нормально"],
+    help:["Спокойные домашние вечера вместо шумных компаний","Помоги закрыть висящие дела — незавершёнка сейчас напрягает","Держи планы стабильными, без резких перемен"],
+    avoid:["Внезапные изменения планов","Перегруз событиями и людьми","Комментарии про еду и аппетит — вообще никогда, а сейчас особенно"],
+    care:["Вечер дома: еда, плед, фильм — идеальная программа","Сделай сам что-то из её списка дел","Спроси про её день и правда выслушай","Тёплая ванна, свечи — организуй"]
+  },
+  pms:{
+    horm:"Прогестерон и эстроген резко падают. Это физиология, а не «характер».",
+    expect:["Раздражительность, слезливость, тревожность — на ровном месте","Усталость, хуже сон, возможны головные боли и отёчность","Тяга к сладкому и «вредному»","Обидчивость: слова ранят сильнее обычного"],
+    help:["Терпение ×2: резкое слово сейчас — это гормоны, не отношение к тебе","Снизь её нагрузку: возьми на себя больше обычного","Корми: шоколад и любимая еда реально помогают","Ранний спокойный сон — лучший подарок","Соглашайся чаще. Спор о мелочи не стоит ничего"],
+    avoid:["Критика — любая, даже «конструктивная»","Серьёзные разговоры, важные решения, планирование бюджета","Шутки про ПМС — это красная кнопка","Фразы «успокойся», «ты преувеличиваешь», «опять ты…»"],
+    care:["Купи шоколад / её любимое сладкое заранее","«Я всё сделаю, отдыхай» — и сделай","Цветы без повода работают вдвойне","Не жди благодарности сразу — она придёт позже","Если она плачет — обними, не решай и не советуй"]
+  }
+};
+
+const MOOD_META = [
+  null,
+  {icon:"⛈", label:"очень непросто"},{icon:"⛈", label:"очень непросто"},
+  {icon:"🌧", label:"чувствительное"},{icon:"🌧", label:"переменчивое"},
+  {icon:"⛅", label:"ровное"},{icon:"⛅", label:"ровное, спокойное"},
+  {icon:"🌤", label:"хорошее"},{icon:"🌤", label:"очень хорошее"},
+  {icon:"☀️", label:"отличное"},{icon:"☀️", label:"великолепное"}
+];
+
+const MONTHS = ["январь","февраль","март","апрель","май","июнь","июль","август","сентябрь","октябрь","ноябрь","декабрь"];
+const MONTHS_G = ["января","февраля","марта","апреля","мая","июня","июля","августа","сентября","октября","ноября","декабря"];
+const DOW = ["Пн","Вт","Ср","Чт","Пт","Сб","Вс"];
+
+/* ================= helpers ================= */
+const mod = (a,n)=>((a%n)+n)%n;
+const dmid = d => new Date(d.getFullYear(), d.getMonth(), d.getDate());
+const daysBetween = (a,b)=>Math.round((dmid(a)-dmid(b))/864e5);
+const addDays=(d,n)=>{const x=new Date(d); x.setDate(x.getDate()+n); return x;};
+const fmtD = d=>`${d.getDate()} ${MONTHS_G[d.getMonth()]}`;
+const plural=(n,one,few,many)=>{const m10=n%10, m100=n%100;
+  if(m10===1&&m100!==11)return one; if(m10>=2&&m10<=4&&(m100<10||m100>=20))return few; return many;};
+const dstr=n=>`${n} ${plural(n,"день","дня","дней")}`;
+
+function ovuDay(){ return Math.max(state.per+3, state.len-14); }
+function pmsStart(){ return Math.max(ovuDay()+3, state.len-4); }
+
+function phaseOf(d){
+  const o=ovuDay(), p=pmsStart();
+  if(d<=state.per) return "mens";
+  if(d<o-1) return "fol";
+  if(d<=o+1) return "ovu";
+  if(d<p) return "lut";
+  return "pms";
+}
+function moodOf(d){
+  const ph=phaseOf(d), o=ovuDay(), p=pmsStart();
+  if(ph==="mens") return d<=2?3:(d===3?4:5);
+  if(ph==="fol"){ const a=state.per+1,b=o-2;
+    return b>a ? Math.round(6+(d-a)/(b-a)*2) : 7; }
+  if(ph==="ovu") return d===o?9:8;
+  if(ph==="lut"){ const a=o+2,b=p-1;
+    return b>a ? Math.round(7-(d-a)/(b-a)*2) : 6; }
+  return (state.len-d)<=1?3:4;
+}
+function cycleDayFor(date){
+  return mod(daysBetween(date, state.start), state.len)+1;
+}
+
+/* ================= persistence (URL hash) ================= */
+function readHash(){
+  const h=new URLSearchParams(location.hash.slice(1));
+  const d=h.get("d");
+  if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)){
+    const [y,m,dd]=d.split("-").map(Number);
+    state.start=new Date(y,m-1,dd);
+  }
+  const l=parseInt(h.get("l")); if(l>=21&&l<=40) state.len=l;
+  const p=parseInt(h.get("p")); if(p>=2&&p<=10) state.per=p;
+}
+function writeHash(){
+  const d=state.start;
+  const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  try{ history.replaceState(null,"",`#d=${iso}&l=${state.len}&p=${state.per}`);}catch(e){}
+}
+
+/* ================= setup UI ================= */
+function initSelects(){
+  const sl=document.getElementById("inpLen");
+  sl.add(new Option("Не знаю (28)",""));
+  for(let i=21;i<=40;i++) sl.add(new Option(i+" "+plural(i,"день","дня","дней"),i));
+  sl.value="";
+  const sp=document.getElementById("inpPer");
+  sp.add(new Option("Не знаю (5)",""));
+  for(let i=2;i<=10;i++) sp.add(new Option(i+" "+plural(i,"день","дня","дней"),i));
+  sp.value="";
+}
+function setToday(){
+  const t=new Date();
+  document.getElementById("inpDate").value=
+    `${t.getFullYear()}-${String(t.getMonth()+1).padStart(2,"0")}-${String(t.getDate()).padStart(2,"0")}`;
+}
+function openSetup(){
+  document.getElementById("setupForm").classList.remove("hidden");
+  document.getElementById("setupSummary").classList.add("hidden");
+  if(state.start){
+    const d=state.start;
+    document.getElementById("inpDate").value=
+      `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+    document.getElementById("inpLen").value=state.len;
+    document.getElementById("inpPer").value=state.per;
+    document.getElementById("introNote").classList.add("hidden");
+  }
+}
+function saveSetup(){
+  const v=document.getElementById("inpDate").value;
+  if(!v){ alert("Укажи дату первого дня последних месячных"); return; }
+  const [y,m,d]=v.split("-").map(Number);
+  const dt=new Date(y,m-1,d);
+  if(daysBetween(dt,new Date())>0){ alert("Дата в будущем — укажи прошедшую дату."); return; }
+  state.start=dt;
+  state.len=parseInt(document.getElementById("inpLen").value)||28;
+  state.per=parseInt(document.getElementById("inpPer").value)||5;
+  writeHash();
+  renderAll();
+}
+function periodToday(){
+  const observed=daysBetween(new Date(), state.start);
+  if(observed>=21&&observed<=40&&observed!==state.len){
+    if(confirm(`Прошлый цикл получился ${observed} ${plural(observed,"день","дня","дней")} (сейчас настроено ${state.len}). Обновить длину цикла на ${observed}?`))
+      state.len=observed;
+  }
+  state.start=dmid(new Date());
+  writeHash();
+  renderAll();
+}
+
+/* ================= render ================= */
+function renderAll(){
+  if(!state.start){ openSetup(); return; }
+  document.getElementById("app").classList.remove("hidden");
+  document.getElementById("setupForm").classList.add("hidden");
+  const sum=document.getElementById("setupSummary");
+  sum.classList.remove("hidden");
+  document.getElementById("summaryText").innerHTML=
+    `Старт: <b>${fmtD(state.start)}</b> · цикл <b>${state.len} дн</b> · месячные <b>${state.per} дн</b>`;
+  renderToday(); renderRadar(); renderAdvice(); renderChart();
+  if(!calCursor){ const n=new Date(); calCursor={y:n.getFullYear(), m:n.getMonth()}; }
+  renderCalendar();
+}
+
+function renderToday(){
+  const today=new Date();
+  const cd=cycleDayFor(today), ph=phaseOf(cd), P=PHASES[ph];
+  const m=moodOf(cd), mm=MOOD_META[m];
+  const cdT=cycleDayFor(addDays(today,1)), phT=phaseOf(cdT), mT=moodOf(cdT);
+  let tomorrow;
+  if(phT!==ph) tomorrow=`Завтра начинается <b style="color:${PHASES[phT].hex}">${PHASES[phT].name.toLowerCase()}</b> — ${PHASES[phT].short}.`;
+  else if(mT>m) tomorrow=`Завтра настроение чуть лучше (${mT}/10) — фаза та же.`;
+  else if(mT<m) tomorrow=`Завтра настроение может просесть (${mT}/10) — будь мягче.`;
+  else tomorrow=`Завтра примерно так же (${mT}/10).`;
+  document.getElementById("todayCard").innerHTML=`
+    <h2>Сегодня, ${fmtD(today)}</h2>
+    <div class="today-top">
+      <div class="today-emoji">${P.emoji}</div>
+      <div>
+        <div class="today-phase"><span class="phase-chip" style="background:${P.hex}"></span>${P.name}</div>
+        <div class="today-sub">День цикла ${cd} из ${state.len} · ${P.short}</div>
+      </div>
+    </div>
+    <div class="mood-line">
+      <div class="mood-bar"><div class="mood-fill" style="width:${m*10}%; background:${P.hex}"></div></div>
+      <div class="mood-num">${m}/10</div>
+    </div>
+    <div class="mood-caption">${mm.icon} Прогноз настроения: <b>${mm.label}</b></div>
+    <div class="tomorrow">🔭 ${tomorrow}</div>
+    <button class="period-btn" onclick="if(confirm('Отметить, что месячные начались сегодня? Цикл пересчитается от сегодняшней даты.')) periodToday()">🩸 Месячные начались сегодня — пересчитать</button>`;
+}
+
+function renderRadar(){
+  const today=new Date(), cdIdx=cycleDayFor(today)-1;
+  const events=[
+    {day:pmsStart(), key:"pms", name:"Начало ПМС", ico:"⚠️",
+      note:"Режим повышенной бережности: меньше критики, больше заботы"},
+    {day:1, key:"mens", name:"Месячные", ico:"🩸",
+      note:"Подготовь дом: тепло, обезболивающее, минимум планов"},
+    {day:state.per+1, key:"fol", name:"«Зелёное окно»", ico:"✅",
+      note:"Лучшее время для важных разговоров, планов и свиданий"},
+    {day:Math.max(1,ovuDay()-1), key:"ovu", name:"Овуляция", ico:"🔥",
+      note:"Пик настроения и близости. И самые фертильные дни!"}
+  ].map(e=>{
+    const until=mod(e.day-1-cdIdx, state.len);
+    return {...e, until, date:addDays(today,until)};
+  }).sort((a,b)=>a.until-b.until);
+  document.getElementById("radar").innerHTML=events.map(e=>{
+    const P=PHASES[e.key];
+    const when=e.until===0?"сегодня":(e.until===1?"завтра":`через ${dstr(e.until)}`);
+    return `<div class="radar-item">
+      <div class="radar-ico" style="background:${P.tint}">${e.ico}</div>
+      <div>
+        <div class="radar-name">${e.name} <span style="color:${P.hex}">·</span> <span class="radar-date">${fmtD(e.date)}</span></div>
+        <div class="radar-note">${e.note}</div>
+      </div>
+      <div class="radar-when" style="color:${e.until<=2?P.hex:"var(--ink2)"}">${when}</div>
+    </div>`;
+  }).join("");
+}
+
+function renderAdvice(){
+  const cd=cycleDayFor(new Date()), ph=phaseOf(cd), A=ADVICE[ph], P=PHASES[ph];
+  const idea=A.care[cd % A.care.length];
+  const avoid=A.avoid.length?`
+    <div class="adv-block"><div class="adv-title">🚫 Чего избегать</div>
+    <ul class="adv-list">${A.avoid.map(x=>`<li>${x}</li>`).join("")}</ul></div>`:"";
+  document.getElementById("adviceCard").innerHTML=`
+    <h2>Инструкция на эту фазу</h2>
+    <div class="hormones">${A.horm}</div>
+    <div class="adv-block"><div class="adv-title">👀 Чего ожидать</div>
+      <ul class="adv-list">${A.expect.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+    <div class="adv-block"><div class="adv-title">💪 Что помогает</div>
+      <ul class="adv-list">${A.help.map(x=>`<li>${x}</li>`).join("")}</ul></div>
+    ${avoid}
+    <div class="care-idea"><b>💡 Идея заботы на сегодня</b>${idea}</div>`;
+}
+
+/* ---------- chart ---------- */
+function renderChart(){
+  const W=360,H=130,padL=8,padR=8,padT=18,padB=20;
+  const L=state.len;
+  const x=d=>padL+(d-0.5)/L*(W-padL-padR);
+  const y=m=>H-padB-(m-1)/9*(H-padT-padB);
+  // phase bands
+  let bands=[],cur=null;
+  for(let d=1;d<=L;d++){
+    const ph=phaseOf(d);
+    if(!cur||cur.ph!==ph){cur={ph,a:d,b:d};bands.push(cur);}else cur.b=d;
+  }
+  const bandRects=bands.map(b=>{
+    const x0=padL+(b.a-1)/L*(W-padL-padR), x1=padL+b.b/L*(W-padL-padR);
+    return `<rect x="${x0.toFixed(1)}" y="${padT}" width="${(x1-x0).toFixed(1)}" height="${H-padT-padB}" fill="${PHASES[b.ph].hex}" opacity="0.13" rx="3"/>`;
+  }).join("");
+  const pts=[]; for(let d=1;d<=L;d++) pts.push(`${x(d).toFixed(1)},${y(moodOf(d)).toFixed(1)}`);
+  const today=new Date(), cd=cycleDayFor(today), P=PHASES[phaseOf(cd)];
+  const axisLabels=`
+    <text x="${x(1)}" y="${H-5}" font-size="9" fill="#8a857a" text-anchor="middle">1</text>
+    <text x="${x(Math.round(L/2))}" y="${H-5}" font-size="9" fill="#8a857a" text-anchor="middle">${Math.round(L/2)}</text>
+    <text x="${x(L)}" y="${H-5}" font-size="9" fill="#8a857a" text-anchor="middle">${L}</text>
+    <text x="${padL}" y="${padT-6}" font-size="9" fill="#8a857a">настроение, день цикла →</text>`;
+  const svg=`<svg viewBox="0 0 ${W} ${H}" id="moodSvg">
+    ${bandRects}
+    <polyline points="${pts.join(" ")}" fill="none" stroke="#26241f" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/>
+    <circle cx="${x(cd).toFixed(1)}" cy="${y(moodOf(cd)).toFixed(1)}" r="5.5" fill="${P.hex}" stroke="#fff" stroke-width="2"/>
+    <text x="${x(cd).toFixed(1)}" y="${(y(moodOf(cd))-10).toFixed(1)}" font-size="9.5" font-weight="700" fill="#26241f" text-anchor="middle">сегодня</text>
+    ${axisLabels}
+  </svg>`;
+  const wrap=document.getElementById("chartWrap");
+  wrap.querySelectorAll("svg").forEach(s=>s.remove());
+  wrap.insertAdjacentHTML("beforeend",svg);
+  document.getElementById("chartLegend").innerHTML=Object.entries(PHASES)
+    .map(([k,p])=>`<span><i style="background:${p.hex}"></i>${p.name}</span>`).join("");
+  // tooltip
+  const tip=document.getElementById("chartTip"), el=document.getElementById("moodSvg");
+  const show=ev=>{
+    const r=el.getBoundingClientRect();
+    const cx=(ev.touches?ev.touches[0].clientX:ev.clientX)-r.left;
+    const d=Math.min(L,Math.max(1,Math.round(cx/r.width*L+0.5)));
+    const ph=PHASES[phaseOf(d)];
+    tip.textContent=`день ${d} · ${moodOf(d)}/10 · ${ph.name}`;
+    tip.style.left=(x(d)/W*r.width)+"px";
+    tip.style.top=(y(moodOf(d))/H*r.height)+"px";
+    tip.style.opacity=1;
+  };
+  el.addEventListener("pointermove",show);
+  el.addEventListener("touchstart",show,{passive:true});
+  el.addEventListener("pointerleave",()=>tip.style.opacity=0);
+}
+
+/* ---------- calendar ---------- */
+function navMonth(dir){
+  calCursor.m+=dir;
+  if(calCursor.m<0){calCursor.m=11;calCursor.y--;}
+  if(calCursor.m>11){calCursor.m=0;calCursor.y++;}
+  renderCalendar();
+}
+function renderCalendar(){
+  const {y,m}=calCursor;
+  document.getElementById("calTitle").textContent=`${MONTHS[m]} ${y}`;
+  const first=new Date(y,m,1);
+  const startIdx=mod(first.getDay()-1,7); // Monday first
+  const gridStart=addDays(first,-startIdx);
+  const today=dmid(new Date());
+  let html=DOW.map(d=>`<div class="dow">${d}</div>`).join("");
+  for(let i=0;i<42;i++){
+    const d=addDays(gridStart,i);
+    const cd=cycleDayFor(d), ph=phaseOf(cd), P=PHASES[ph];
+    const other=d.getMonth()!==m?" other":"";
+    const isToday=daysBetween(d,today)===0?" today-cell":"";
+    html+=`<div class="cell${other}${isToday}" style="background:${P.tint}" title="${P.name}, день ${cd}">
+      <span>${d.getDate()}</span><span class="bar" style="background:${P.hex}"></span></div>`;
+  }
+  document.getElementById("calGrid").innerHTML=html;
+  document.getElementById("calLegend").innerHTML=Object.entries(PHASES)
+    .map(([k,p])=>`<span><i style="background:${p.hex}"></i>${p.name}</span>`).join("");
+}
+
+/* ================= boot ================= */
+initSelects();
+readHash();
+if(state.start){ renderAll(); } else { openSetup(); }
+</script>
+</body>
+</html>
