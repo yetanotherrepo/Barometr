@@ -188,7 +188,7 @@
   </div>
 
   <div class="card disclaimer">
-    <b>Дисклеймер.</b> Расчёт основан на усреднённой модели цикла (овуляция ≈ за 14 дней до следующих месячных, ПМС — последние ~5 дней). Это не медицинский инструмент и не средство контрацепции. Настроение зависит не только от гормонов: сон, стресс и работа влияют не меньше. Данные хранятся только в адресе этой страницы — добавь её в закладки, чтобы не вводить заново.
+    <b>Дисклеймер.</b> Расчёт основан на усреднённой модели цикла (овуляция ≈ за 14 дней до следующих месячных, ПМС — последние ~5 дней). Это не медицинский инструмент и не средство контрацепции. Настроение зависит не только от гормонов: сон, стресс и работа влияют не меньше. Данные сохраняются в этом браузере на этом устройстве и никуда не отправляются; ссылка с хвостом #d=… переносит настройки на другое устройство.
   </div>
 
 </div>
@@ -298,22 +298,36 @@ function cycleDayFor(date){
   return mod(daysBetween(date, state.start), state.len)+1;
 }
 
-/* ================= persistence (URL hash) ================= */
-function readHash(){
-  const h=new URLSearchParams(location.hash.slice(1));
-  const d=h.get("d");
+/* ================= persistence (localStorage + URL hash) ================= */
+const LS_KEY="barometr-v1";
+function applyParams(d,l,p){
   if(d && /^\d{4}-\d{2}-\d{2}$/.test(d)){
     const [y,m,dd]=d.split("-").map(Number);
     state.start=new Date(y,m-1,dd);
   }
-  const l=parseInt(h.get("l")); if(l>=21&&l<=40) state.len=l;
-  const p=parseInt(h.get("p")); if(p>=2&&p<=10) state.per=p;
+  l=parseInt(l); if(l>=21&&l<=40) state.len=l;
+  p=parseInt(p); if(p>=2&&p<=10) state.per=p;
 }
-function writeHash(){
+function readState(){
+  // 1) browser storage (main), wrapped: storage may be unavailable in sandboxed previews
+  try{
+    const s=JSON.parse(localStorage.getItem(LS_KEY)||"null");
+    if(s) applyParams(s.d,s.l,s.p);
+  }catch(e){}
+  // 2) URL hash overrides (lets a shared/bookmarked link carry settings)
+  const h=new URLSearchParams(location.hash.slice(1));
+  if(h.get("d")) applyParams(h.get("d"),h.get("l"),h.get("p"));
+}
+function isoStart(){
   const d=state.start;
-  const iso=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function writeState(){
+  const iso=isoStart();
+  try{ localStorage.setItem(LS_KEY,JSON.stringify({d:iso,l:state.len,p:state.per})); }catch(e){}
   try{ history.replaceState(null,"",`#d=${iso}&l=${state.len}&p=${state.per}`);}catch(e){}
 }
+const writeHash=writeState; /* backwards-compat alias */
 
 /* ================= setup UI ================= */
 function initSelects(){
@@ -536,8 +550,8 @@ function renderCalendar(){
 
 /* ================= boot ================= */
 initSelects();
-readHash();
-if(state.start){ renderAll(); } else { openSetup(); }
+readState();
+if(state.start){ writeState(); renderAll(); } else { openSetup(); }
 </script>
 </body>
 </html>
