@@ -1,0 +1,13 @@
+{
+  "name": "Барометр — прогноз её настроения",
+  "short_name": "Барометр",
+  "description": "Трекер женского цикла для мужчин: фазы, прогноз настроения и советы по взаимодействию.",
+  "start_url": ".",
+  "display": "standalone",
+  "background_color": "#fcfcfb",
+  "theme_color": "#fcfcfb",
+  "icons": [
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icon.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
